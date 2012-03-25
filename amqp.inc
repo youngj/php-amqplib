@@ -478,7 +478,9 @@ class AMQPConnection extends AbstractChannel
         $len = strlen($data);
         while(true)
         {
-            if(false === ($written = fwrite($this->sock, $data)))
+            $written = fwrite($this->sock, $data);
+        
+            if (false === $written || ($len > 0 && $written === 0))
             {
                 throw new Exception ("Error sending data");
             }
