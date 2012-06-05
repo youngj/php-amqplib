@@ -326,18 +326,11 @@ class AMQPSSLConnection extends AMQPConnection
 {
   public function __construct($host, $port,
                               $user, $password,
-                              $vhost="/", $ssl_options = array(), $options = array())
+                              $vhost="/", $options = array(), $ssl_options = array())
   {
-    $ssl_context = empty($ssl_options) ? null : $this->create_ssl_context($ssl_options);
-
-    parent::__construct($host, $port, $user, $password, $vhost="/",
-                        isset($options['insist']) ? $options['insist'] : false,
-                        isset($options['login_method']) ? $options['login_method'] : "AMQPLAIN",
-                        isset($options['login_response']) ? $options['login_response'] : null,
-                        isset($options['locale']) ? $options['locale'] : "en_US",
-                        isset($options['connection_timeout']) ? $options['connection_timeout'] : 3,
-                        isset($options['read_write_timeout']) ? $options['read_write_timeout'] : 3,
-                        $ssl_context);
+    $options['context']  = empty($ssl_options) ? null : $this->create_ssl_context($ssl_options);
+    
+    parent::__construct($host, $port, $user, $password, $vhost="/", $options);
   }
 
   private function create_ssl_context($options)
@@ -369,17 +362,24 @@ class AMQPConnection extends AbstractChannel
         "10,61" => "close_ok"
     );
 
-    public function __construct($host, $port,
-                                $user, $password,
-                                $vhost="/",$insist=false,
-                                $login_method="AMQPLAIN",
-                                $login_response=NULL,
-                                $locale="en_US",
-                                $connection_timeout = 3,
-                                $read_write_timeout = 3,
-                                $context = null)
+    public function __construct($host, $port, $user, $password, $vhost="/", $options = null)
     {
-
+        $insist=false;
+        $login_method="AMQPLAIN";
+        $login_response=NULL;
+        $locale="en_US";
+        $connection_timeout = 3;
+        $read_write_timeout = 3;
+        $context = null;
+        $heartbeat = 0;
+        
+        if ($options)
+        {
+            extract($options);
+        }
+        
+        $this->heartbeat = $heartbeat;
+    
         if($user && $password)
         {
             $login_response = new AMQPWriter();
@@ -432,9 +432,9 @@ class AMQPConnection extends AbstractChannel
             while($this->wait_tune_ok)
             {
                 $this->wait(array(
-                                "10,20", // secure
-                                "10,30", // tune
-                            ));
+                    "10,20", // secure
+                    "10,30", // tune
+                ));
             }
 
             $host = $this->x_open($vhost,"", $insist);
@@ -815,9 +815,9 @@ class AMQPConnection extends AbstractChannel
         $v=$args->read_long();
         if($v)
             $this->frame_max = $v;
-        $this->heartbeat = $args->read_short();
+        $this->server_heartbeat = $args->read_short();
 
-        $this->x_tune_ok($this->channel_max, $this->frame_max, 0);
+        $this->x_tune_ok($this->channel_max, $this->frame_max, $this->heartbeat);
     }
 
     /**

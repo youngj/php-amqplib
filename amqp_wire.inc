@@ -297,8 +297,9 @@ class AMQPReader
         {
             $res = '';
             $read = 0;
-
+            
             $start = time();
+            
             while($read < $n && !feof($this->sock->real_sock()) &&
                   (false !== ($buf = fread($this->sock->real_sock(), $n - $read))))
             {
@@ -311,11 +312,13 @@ class AMQPReader
 
                 $read += strlen($buf);
                 $res .= $buf;
-            }
+            }            
 
             if(strlen($res)!=$n)
+            {
                 throw new Exception ("Error reading data. Recevived " .
                                      strlen($res) . " instead of expected $n bytes");
+            }
             $this->offset += $n;
         } else
         {
